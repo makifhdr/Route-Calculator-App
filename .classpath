@@ -9,6 +9,5 @@
 	<classpathentry kind="lib" path="C:/Java_Libraries/jackson-core-2.18.3.jar"/>
 	<classpathentry kind="lib" path="C:/Java_Libraries/jackson-databind-2.18.3.jar"/>
 	<classpathentry kind="lib" path="C:/Java_Libraries/jackson-annotations-2.18.3.jar"/>
-	<classpathentry kind="lib" path="C:/Java_Libraries/jxmapviewer2-2.8.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -1,8 +1,8 @@
 package application;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.*;
-
-
     
 public class Main{
 		
@@ -14,9 +14,29 @@ public class Main{
 		IHesaplayici hesaplayici = new Hesaplayici();
 		IFactory factory = new Factory();
 		
-		List<Durak> durakListesi = parser.parseStations("files/veriseti.json");
-		Taxi taxi = parser.parseTaxi("files/veriseti.json");
+		List<Durak> durakListesi = new ArrayList<>();
+		Taxi taxi = null;
 		List<String> durakIDListesi = new ArrayList<>();
+
+		try {
+		    durakListesi = parser.parseStations("files/veriseti.json");
+		    taxi = parser.parseTaxi("files/veriseti.json");
+
+		    if (durakListesi == null || durakListesi.isEmpty()) {
+		        throw new Exception("Durak listesi boş veya yüklenemedi!");
+		    }
+
+		    if (taxi == null) {
+		        throw new Exception("Taksi bilgisi yüklenemedi!");
+		    }
+
+		} catch (FileNotFoundException e) {
+		    System.err.println("Hata: Dosya bulunamadı! -> " + e.getMessage());
+		} catch (IOException e) {
+		    System.err.println("Hata: Dosya okunurken bir hata oluştu! -> " + e.getMessage());
+		} catch (Exception e) {
+		    System.err.println("Bilinmeyen hata: " + e.getMessage());
+		}
 		
 
 	    boolean taksiKullanCurrent = false;
@@ -55,7 +75,7 @@ public class Main{
 		    		vertice.addEdge(transferVertex, transferDurak.getTransferSure());
 	    		}
 	    	}
-		}	    
+		}
     	
     	Map<String, Vertex> graphVertices = graph.getVertices();
 	    
@@ -188,6 +208,18 @@ public class Main{
             }
         }
         
+        for (int i = 0; i < enKisaYol.size() - 1; i++) {
+        	String durakID = enKisaYol.get(i);
+        	String nextDurakID = enKisaYol.get(i+1);
+        	
+            Vertex vertex = graphVertices.get(durakID);
+            Vertex vertexNext = graphVertices.get(nextDurakID);
+            if (vertex != null) {
+            	if(!vertex.getDurak().getType().equals(vertexNext.getDurak().getType()))
+            		namePath.set(i, vertex.getDurak().getName() + "(Aktarma)");
+            }
+        }
+        
         List<String> namePathBus = new ArrayList<>();
         for (String durakID : enKisaYolBus) {
             Vertex vertex = graphVertices.get(durakID);
@@ -208,18 +240,18 @@ public class Main{
         double guzergahUcretiBus = (Math.round(hesaplayici.guzergahUcretHesapla(enKisaYolBus, yolcu, graphVertices) * 100.0) / 100.0);
         double guzergahUcretiTram = (Math.round(hesaplayici.guzergahUcretHesapla(enKisaYolTram, yolcu, graphVertices) * 100.0) / 100.0);
         
-        if(taksiKullanCurrent == true)
+        if(taksiKullanCurrent)
         	guzergahUcreti += distanceToCurrentDurak * taxi.getCostPerKm() + taxi.getOpeningFee();
-        if(taksiKullanCurrentBus == true)
+        if(taksiKullanCurrentBus)
         	guzergahUcretiBus += distanceToCurrentBusDurak * taxi.getCostPerKm() + taxi.getOpeningFee();
-        if(taksiKullanCurrentTram == true)
+        if(taksiKullanCurrentTram)
         	guzergahUcretiTram += distanceToCurrentTramDurak * taxi.getCostPerKm() + taxi.getOpeningFee();
         
-        if(taksiKullanTarget == true)
+        if(taksiKullanTarget)
         	guzergahUcreti += distanceToTargetDurak* taxi.getCostPerKm() + taxi.getOpeningFee();
-        if(taksiKullanTargetBus == true)
+        if(taksiKullanTargetBus)
         	guzergahUcretiBus += distanceToTargetBusDurak* taxi.getCostPerKm() + taxi.getOpeningFee();
-        if(taksiKullanTargetTram == true)
+        if(taksiKullanTargetTram)
         	guzergahUcretiTram += distanceToTargetTramDurak* taxi.getCostPerKm() + taxi.getOpeningFee();
         	  
 	    System.out.printf("Sadece taksi ile giderseniz;\nÜcret: %,.2f TL\n\n", (taxi.getOpeningFee() + (taxi.getCostPerKm() * distanceToTarget)));
@@ -228,7 +260,7 @@ public class Main{
 	    
 	    yolBilgisiYazdir("Otobüs", currentEnYakinBusDurak.getName(), targetEnYakinBusDurak.getName(), namePathBus, guzergahUcretiBus, hesaplayici.guzergahSureHesapla(enKisaYolBus, graphVertices), taksiKullanCurrentBus, taksiKullanTargetBus, graphVertices);
          
-	    yolBilgisiYazdir("Tramvay", currentEnYakinTramDurak.getName(), targetEnYakinTramDurak.getName(), namePathTram, guzergahUcretiTram, hesaplayici.guzergahSureHesapla(enKisaYolTram, graphVertices), taksiKullanCurrentBus, taksiKullanTargetBus, graphVertices);
+	    yolBilgisiYazdir("Tramvay", currentEnYakinTramDurak.getName(), targetEnYakinTramDurak.getName(), namePathTram, guzergahUcretiTram, hesaplayici.guzergahSureHesapla(enKisaYolTram, graphVertices), taksiKullanCurrentTram, taksiKullanTargetTram, graphVertices);
 	    	    
 	    	    	   
     	scanner.close();
@@ -242,8 +274,8 @@ public class Main{
 		    List<String> yol,
 		    double guzergahUcreti,
 		    int guzergahSuresi,
-		    boolean taksiKullanCurrent,
-		    boolean taksiKullanTarget,
+		    boolean taksiKullanCurrent1,
+		    boolean taksiKullanTarget1,
 		    Map<String, Vertex> graphVertices
 		) {
 		
@@ -252,9 +284,10 @@ public class Main{
 		else {
 			System.out.printf("Sadece %s kullanarak: %s ve %s arası en kısa yol: %s\n", tasimaTipi, baslangicDurak, hedefDurak, yol);
 		    System.out.println("Süre: " + guzergahSuresi + " dk");
-		    System.out.printf("Ücret: %,.2f TL\n\n", guzergahUcreti);
-		    if(taksiKullanCurrent == true) System.out.printf("Mesafe %d km den fazla olduğu için %s durağına giderken taksi kullanıldı", Main.esikDeger, tasimaTipi);
-		    if(taksiKullanTarget == true) System.out.printf("Mesafe %d km den fazla olduğu için %s durağından hedefe giderken taksi kullanıldı\n", Main.esikDeger, tasimaTipi);
+		    System.out.printf("Ücret: %,.2f TL", guzergahUcreti);
+		    if(taksiKullanCurrent1) System.out.printf("\nMesafe %,.1f km den fazla olduğu için %s durağına giderken taksi kullanıldı", Main.esikDeger, tasimaTipi);
+		    if(taksiKullanTarget1) System.out.printf("\nMesafe %,.1f km den fazla olduğu için %s durağından hedefe giderken taksi kullanıldı\n\n", Main.esikDeger, tasimaTipi);
+		    System.out.println();
 		}
 			
 		
